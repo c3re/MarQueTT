@@ -358,7 +358,7 @@ void callback(char* topic, byte* payload, unsigned int length)
 
     uint8_t* text = texts[target_channel];
     text[0] = ' ';
-    for (int i = 0 ; i < 4096; i++) {
+    for (int i = 0 ; i < MAX_TEXT_LENGTH; i++) {
       text[i] = 0;
     }
     char tmp[16];
