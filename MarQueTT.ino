@@ -45,6 +45,10 @@
 #define LogTarget Serial
 #endif
 
+#ifndef DEBUGPRINT
+#define DEBUGPRINT  0
+#endif
+
 #include "font.h"
 
 
@@ -68,7 +72,9 @@ uint64_t marqueeBlinkTimestamp;
 uint16_t blinkDelay = 0;
 char devaddr[20];
 char devname[40];
+IPAddress ip;
 String devname_lc;
+bool first_connect = true;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -99,10 +105,6 @@ void setup() {
   led.setIntensity(0);
   led.setEnabled(true);
   calculate_font_index();
-  if (do_publishes) {
-    client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "startup");
-    client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), ((String)"version " + VERSION).c_str());
-  }
 }
 
 
@@ -124,6 +126,8 @@ void setup_wifi() {
   Serial.print(WiFi.localIP());
   Serial.print(" - MAC address: ");
   Serial.println(WiFi.macAddress());
+
+  ip = WiFi.localIP();
   byte mac[6];
   WiFi.macAddress(mac);
   snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
@@ -191,7 +195,13 @@ void loop()
   if (!client.connected()) {
     reconnect();
     if (do_publishes)
-      client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "reconnect");
+      if (first_connect) {
+        client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "startup");
+        client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), ((String)"version " + VERSION).c_str());
+        client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), ((String)"ip " + ip.toString()).c_str());
+        first_connect = false;
+      }
+    client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "reconnect");
   }
   client.loop();
 }
@@ -341,7 +351,7 @@ void callback(char* topic, byte* payload, unsigned int length)
 
 
   if (command.startsWith("text")) {
-    const bool pr = 0;                                // set to 1 for debug prints
+    const bool pr = DEBUGPRINT;                   // set to 1 for debug prints
     if (pr) {
       LogTarget.print("content = [");
       printHex8(payload, length);
@@ -537,7 +547,7 @@ void reconnect() {
     LogTarget.print("Attempting MQTT connection...");
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
-    if (client.connect(clientId.c_str(), mqtt_username, mqtt_password, TOPICROOT "/status", 1, true, "Offline")) {
+    if (client.connect(clientId.c_str(), mqtt_username, mqtt_password, (((String)TOPICROOT "/" + devname + "/status").c_str()), 1, true, "offline")) {
       LogTarget.println("connected");
       client.subscribe(TOPICROOT "/#");
     } else {

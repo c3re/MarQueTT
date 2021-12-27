@@ -1,4 +1,4 @@
-# MarQueeTT[ino]
+# MarQueTT[ino]
 
 ## A MAX7221 LED-Matrix Scrolling Marquee controlled via MQTT
 
@@ -38,7 +38,8 @@ TBD: priority of individual topics over global topics ?
 
 - `ledMatrix/<aabbcc>/status`:
   - `startup`       — sent on system start (after first MQTT connect)
-  - `version x.y.z` — sent on system start (after first MQTT connect)
+  - `version x.y.z` — sent on system start (after first MQTT connect): firmware version number
+  - `ip w.x.y.z`    — sent on system start (after first MQTT connect): IP address
   - `reconnect`     — sent on MQTT reconnect
   - `repeat`        — sent at end of a sequence (TBD: for each channel or total sequence?)
   - `offline`       — sent as will when the MQTT connection disconnects unexpectedly

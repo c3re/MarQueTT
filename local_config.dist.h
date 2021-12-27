@@ -30,3 +30,4 @@ const char* initialText = "no such text";         // Initial Text shown before t
                                                   // Use only 7-Bit ASCII characters!
 #define MAX_TEXTCYCLE 32                          // Maximum number of texts in one cycle
 #define START_CYCLES  3                           // Number of cycles for the start message
+#define DEBUGPRINT 0                              // set to 1 for debug prints
