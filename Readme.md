@@ -55,19 +55,29 @@ Connect your display's X pin to your controller's Y pin:
 
 See https://github.com/bartoszbielawski/LEDMatrixDriver#pin-selection for more information
 
+There may be problems when the power supply to the matrix is not good. Usually, the 5V output of the WEMOS module is connected simply to the matrix input connector, but it might be necessary to
+- connect to other power inputs on the matrix, too – especially when several modules (3+) are chained,
+- have an "angst" capacitor between +5V and GND, or even
+- have an extra power supply (not via USB/WEMOS).
+
 #### Software
 
+- Use Arduino or compatible environment.
+- Have the following libraries installed (versions given here are known to work):
+    - LEDMatrixDriver by Bartosz Bielawski (version 0.2.2),
+    - PubSubClient by Nick O'Leary (version 2.8).
 - Copy `local_config.dist.h` to `local_config.h` and fill in WLAN credentials. 
 - Check the `LEDMATRIX_`* constants according to your hardware setup.
 - You might also want to change the default values.
 
 ### Change Ideas
 
-- Use `ledMatrix/all` instead of `ledMatrix` as a prefix for global topics so `ledMatrix/all/#` matches all global topics
+- Use `ledMatrix/all` instead of `ledMatrix` as a prefix for global topics so `ledMatrix/all/#` matches all global topics (`ledMatrix/#` would not work as intended).
 
 ### Extension Ideas
 
 - WS2812 LED (one or more?) for quick signalling
 - acoustic output via piezo element for signalling
 - some push buttons for remote feedback or for local display control (cycle next, acknowledge, etc.)
+- use an IR receiver together with a spare remote control
 
