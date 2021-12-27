@@ -5,9 +5,10 @@
 
 */
 
-#define VERSION "1.3.5"
+#define VERSION "1.3.6"
 
 /*  Version history:
+    1.3.6   fixes
     1.3.5   bugfixes, new glyphs
     1.3.4   options for static text display
     1.3.3   show + publish version number
