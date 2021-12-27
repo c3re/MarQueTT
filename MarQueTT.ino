@@ -409,8 +409,8 @@ void callback(char* topic, byte* payload, unsigned int length)
             text[j++] = 134;
           } else if (i < length && payload[i] == 0x87) {    //  = double dagger sign
             text[j++] = 135;
-          } else if (i < length && payload[i] == 0x89) {    //  =
-            text[j++] = 135;
+          } else if (i < length && payload[i] == 0x89) {    //  = per mille sign
+            text[j++] = 137;
           } else if (i < length && payload[i] == 0xA0) {    // no-break space (wide space)
             text[j++] = 129;
           } else if (i < length && payload[i] == 0xA7) {    // § = section sign
@@ -424,7 +424,7 @@ void callback(char* topic, byte* payload, unsigned int length)
           } else if (i < length && payload[i] == 0xB3) {    // ³ = superscript 3
             text[j++] = 179;
           } else if (i < length && payload[i] == 0xB5) {    // µ = mu
-            text[j++] = 171;
+            text[j++] = 181;
           } else if (i < length && payload[i] == 0xB9) {    // ¹ = superscript 1
             text[j++] = 185;
           } else if (i < length && payload[i] == 0xBA) {    // º = masculine numeral indicator ("numero")
