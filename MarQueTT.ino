@@ -1,13 +1,14 @@
 /*
     MarQueTT[ino]     Matrix Display based on n x 8x8 monochrome LEDs, driven by MAX7221
 
-    a 2020/2021 c3RE project
+    a 2020/2021/2022 c3RE project
 
 */
 
-#define VERSION "1.3.6"
+#define VERSION "1.4.0beta"
 
 /*  Version history:
+    1.4.0   switch to WiFiManager
     1.3.6   fixes
     1.3.5   bugfixes, new glyphs
     1.3.4   options for static text display
@@ -27,6 +28,7 @@
 #include <LEDMatrixDriver.hpp>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
+#include <WiFiManager.h>
 #include <PubSubClient.h>
 #include "local_config.h"
 
@@ -89,6 +91,12 @@ void getScrolltextFromBuffer(int channel);
 // functions
 
 void setup() {
+  led.setIntensity(0);
+  led.setEnabled(true);
+  for (int y=0; y<8; y++)
+    led.setPixel(63, y, 1);
+  led.display();
+
   Serial.begin(115200);
   Serial.println();
   Serial.println();
@@ -103,13 +111,26 @@ void setup() {
     snprintf((char*)(texts[c]), sizeof(texts[c]), "MarQueTTino %s Version %s", devaddr, VERSION);
   }
   textcycle[0] = 0;
-  led.setIntensity(0);
-  led.setEnabled(true);
+
   calculate_font_index();
 }
 
 
 void setup_wifi() {
+
+#if 1
+  // Use MarQueTTino-[MAC] as Name for (a) WifiManager AP, (b) OTA hostname, (c) MQTT client name
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
+  snprintf(devname, sizeof(devname), "MarQueTTino-%02X%02X%02X", mac[3], mac[4], mac[5]);
+
+  WiFiManager wifiManager;
+
+  wifiManager.autoConnect(devname);
+
+#else
+  // old WiFi code
   delay(10);
   Serial.println();
   Serial.print("Connecting to ");
@@ -120,7 +141,6 @@ void setup_wifi() {
     delay(500);
     Serial.print(".");
   }
-  randomSeed(micros());
   Serial.println("");
   Serial.print("WiFi connected");
   Serial.print(" - IP address: ");
@@ -133,11 +153,20 @@ void setup_wifi() {
   WiFi.macAddress(mac);
   snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
   snprintf(devname, sizeof(devname), "MarQueTTino-%02X%02X%02X", mac[3], mac[4], mac[5]);
-  Serial.println((String)"This device is called '" + devname + "'.");
+
+  WiFi.hostname(devname);
+#endif
+
+  LogTarget.println((String)"This device is called '" + devname + "'.");
   devname_lc = String(devname);
   devname_lc.toLowerCase(); // used for topic comparisons
 
-  WiFi.hostname(devname);
+
+  randomSeed(micros());
+
+  //// OTA FUNCTIONS
+  //
+  //
   ArduinoOTA.setHostname(devname);
 
   ArduinoOTA.onStart([]() {
@@ -172,6 +201,10 @@ void setup_wifi() {
     }
   });
   ArduinoOTA.begin();
+  //
+  //
+  //// END OF OTA FUNCTIONS
+
 #if LOG_TELNET
   TelnetStream.begin();
   Serial.println((String)"All further logging is routed to telnet. Just connect to " + devname + " port 22.");
@@ -230,8 +263,13 @@ void callback(char* topic, byte* payload, unsigned int length)
   String command = topic + String(topic).lastIndexOf(TOPICROOT "/") + strlen(TOPICROOT) + 1;
   command.toLowerCase();
 
-  if (command.startsWith(devname_lc)) { // device-specific topic was used
-    command.remove(0, strlen(devname) + 1);   // strip device name
+  if (command.startsWith("marquettino-")) { // device-specific topic was used
+
+    if (command.startsWith(devname_lc)) {   // this device was addressed
+      command.remove(0, strlen(devname) + 1);   // strip device name
+    } else {                                // other device => ignore
+      return;
+    }
   }
 
   LogTarget.println((String)"Command = [" + command + "]");
