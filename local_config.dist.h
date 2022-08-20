@@ -1,12 +1,6 @@
 
-// local configuration -- copy this to local_config.h and change to your needs.
+// local configuration
 
-const char* ssid = "";                                                      // Name of the SSID to connect to
-const char* password = "";                                                  // Password used to connect to your wifi
-
-const char* mqtt_server = "";                                               // Hostname or IP of mqtt-Server
-const char* mqtt_username = "";                                             // Username used to connect to MQTT-Server, leave empty if unused
-const char* mqtt_password = "";                                             // Password used to connect to MQTT-Server, leave empty if unused
 
 // set to false if you do not want to publish anything:
 const bool do_publishes = true;

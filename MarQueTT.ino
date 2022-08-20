@@ -5,9 +5,10 @@
 
 */
 
-#define VERSION "1.4.0beta"
+#define VERSION "1.5.0"
 
 /*  Version history:
+    1.5.0   MQTT configuration via WiFiManager
     1.4.0   switch to WiFiManager
     1.3.6   fixes
     1.3.5   bugfixes, new glyphs
@@ -28,10 +29,9 @@
 #include <LEDMatrixDriver.hpp>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
-#include <WiFiManager.h>
+/**#include <WiFiManager.h>**/
 #include <PubSubClient.h>
 #include "local_config.h"
-
 
 #ifndef TOPICROOT
 #define TOPICROOT "ledMatrix"
@@ -52,6 +52,7 @@
 #define DEBUGPRINT  0
 #endif
 
+#include "wmconfig.h"       // WiFiManager support
 #include "font.h"
 
 
@@ -73,10 +74,6 @@ uint64_t marqueeCycleTimestamp = 0;
 uint64_t marqueeDelayTimestamp = 0;
 uint64_t marqueeBlinkTimestamp;
 uint16_t blinkDelay = 0;
-char devaddr[20];
-char devname[40];
-IPAddress ip;
-String devname_lc;
 bool first_connect = true;
 
 WiFiClient espClient;
@@ -93,7 +90,7 @@ void getScrolltextFromBuffer(int channel);
 void setup() {
   led.setIntensity(0);
   led.setEnabled(true);
-  for (int y=0; y<8; y++)
+  for (int y = 0; y < 8; y++)
     led.setPixel(63, y, 1);
   led.display();
 
@@ -103,7 +100,7 @@ void setup() {
   Serial.println("MarQueTT[ino] Version " VERSION);
   Serial.println();
   setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  client.setServer(sett.mqtt_broker, 1883);
   client.setCallback(callback);
   client.setBufferSize(MAX_TEXT_LENGTH);
   for (int c = 0; c < NUM_CHANNELS; c++) {
@@ -113,102 +110,6 @@ void setup() {
   textcycle[0] = 0;
 
   calculate_font_index();
-}
-
-
-void setup_wifi() {
-
-#if 1
-  // Use MarQueTTino-[MAC] as Name for (a) WifiManager AP, (b) OTA hostname, (c) MQTT client name
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
-  snprintf(devname, sizeof(devname), "MarQueTTino-%02X%02X%02X", mac[3], mac[4], mac[5]);
-
-  WiFiManager wifiManager;
-
-  wifiManager.autoConnect(devname);
-
-#else
-  // old WiFi code
-  delay(10);
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.print("WiFi connected");
-  Serial.print(" - IP address: ");
-  Serial.print(WiFi.localIP());
-  Serial.print(" - MAC address: ");
-  Serial.println(WiFi.macAddress());
-
-  ip = WiFi.localIP();
-  byte mac[6];
-  WiFi.macAddress(mac);
-  snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
-  snprintf(devname, sizeof(devname), "MarQueTTino-%02X%02X%02X", mac[3], mac[4], mac[5]);
-
-  WiFi.hostname(devname);
-#endif
-
-  LogTarget.println((String)"This device is called '" + devname + "'.");
-  devname_lc = String(devname);
-  devname_lc.toLowerCase(); // used for topic comparisons
-
-
-  randomSeed(micros());
-
-  //// OTA FUNCTIONS
-  //
-  //
-  ArduinoOTA.setHostname(devname);
-
-  ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-      type = "sketch";
-    } else { // U_FS
-      type = "filesystem";
-    }
-
-    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-    LogTarget.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    LogTarget.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    LogTarget.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    LogTarget.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      LogTarget.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      LogTarget.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      LogTarget.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      LogTarget.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      LogTarget.println("End Failed");
-    }
-  });
-  ArduinoOTA.begin();
-  //
-  //
-  //// END OF OTA FUNCTIONS
-
-#if LOG_TELNET
-  TelnetStream.begin();
-  Serial.println((String)"All further logging is routed to telnet. Just connect to " + devname + " port 22.");
-#endif
 }
 
 
@@ -253,6 +154,8 @@ void printHex8(uint8_t *data, uint8_t length) // prints 8-bit data in hex with l
 
 void callback(char* topic, byte* payload, unsigned int length)
 {
+  const bool pr = DEBUGPRINT;                   // set to 1 for debug prints
+
   if (String(topic).endsWith("status")) return; // don't process stuff we just published
 
   LogTarget.print((String)"MQTT in: " + topic + "\t = [");
@@ -263,11 +166,15 @@ void callback(char* topic, byte* payload, unsigned int length)
   String command = topic + String(topic).lastIndexOf(TOPICROOT "/") + strlen(TOPICROOT) + 1;
   command.toLowerCase();
 
-  if (command.startsWith("marquettino-")) { // device-specific topic was used
+  if (pr) LogTarget.println((String)"Check command " + command + " for match with devname_lc " + devname_lc);
 
+  if (command.startsWith("marquettino-")) { // device-specific topic was used
+    if (pr) LogTarget.println((String)"    ok, has prefix 'marquettino-'");
     if (command.startsWith(devname_lc)) {   // this device was addressed
+      if (pr) LogTarget.println((String)"    ok, matches our name");
       command.remove(0, strlen(devname) + 1);   // strip device name
     } else {                                // other device => ignore
+      if (pr) LogTarget.print((String)"    no match, ignore command");
       return;
     }
   }
@@ -586,7 +493,7 @@ void reconnect() {
     LogTarget.print("Attempting MQTT connection...");
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
-    if (client.connect(clientId.c_str(), mqtt_username, mqtt_password, (((String)TOPICROOT "/" + devname + "/status").c_str()), 1, true, "offline")) {
+    if (client.connect(clientId.c_str(), sett.mqtt_user, sett.mqtt_password, (((String)TOPICROOT "/" + devname + "/status").c_str()), 1, true, "offline")) {
       LogTarget.println("connected");
       client.subscribe(TOPICROOT "/#");
     } else {
