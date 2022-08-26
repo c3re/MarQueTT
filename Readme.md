@@ -59,21 +59,29 @@ See https://github.com/bartoszbielawski/LEDMatrixDriver#pin-selection for more i
 There may be problems when the power supply to the matrix is not good. Usually, the 5V output of the WEMOS module is connected simply to the matrix input connector, but it might be necessary to
 - connect to other power inputs on the matrix, too – especially when several modules (3+) are chained,
 - have an "angst" capacitor between +5V and GND, or even
-- have an extra power supply (not via USB/WEMOS).
+- have an extra power supply (not via USB/WEMOS). Remember that the WEMOS has a maximum current it can route from the USB supply to the +5V output pin. If this is exceeded, the SMD diode in between may burn out.
 
 #### Software
 
-- Use Arduino or compatible environment.
+- Use Arduino or compatible environment with the ESP8266 board package installed.
 - Have the following libraries installed (versions given here are known to work):
     - LEDMatrixDriver by Bartosz Bielawski (version 0.2.2),
-    - PubSubClient by Nick O'Leary (version 2.8).
-- Copy `local_config.dist.h` to `local_config.h` and fill in WLAN credentials. 
-- Check the `LEDMATRIX_`* constants according to your hardware setup.
-- You might also want to change the default values.
+    - PubSubClient by Nick O'Leary (version 2.8),
+    - WiFiManager by tablatronix (version 2.0.12-beta).
+- Copy `local_config.dist.h` to `local_config.h` and change settings if really needed.
+    - WiFi and MQTT setup is done via web interface. 
+    - Check the `LEDMATRIX_`* constants according to your hardware setup.
+    - You might also want to change the default values.
+
+#### Setup via WiFiManager
+
+When the device is started for the first time, it creates an WiFi access point with the SSID name of "MarQueTTino-<aabbcc>", <aabbcc> being the serial number as described above. When you connect to that network with your computer, it will display a setup dialogue provided by the WiFiManager library. Here you can choose the WiFi it should connect to, give the password and finally set the MQTT parameters: broker hostname, and optionally MQTT user and password. These parameters are then stored in the ESP's flash memory. If the device cannot join the configured WiFi network on startup anytime later, it will again present the AP.
+
+When the device is started, it gives several status messages on the display. When a countdown "res? 3" .. 1 is shown, the reset button can be pressed in order to force a factory default reset. After this, the device will again go into AP mode and the setup can / must be done.
 
 ### Change Ideas
 
-- Use `ledMatrix/all` instead of `ledMatrix` as a prefix for global topics so `ledMatrix/all/#` matches all global topics (`ledMatrix/#` would not work as intended).
+- currently none.
 
 ### Extension Ideas
 

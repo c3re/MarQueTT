@@ -5,9 +5,10 @@
 
 */
 
-#define VERSION "1.5.0"
+#define VERSION "1.5.1"
 
 /*  Version history:
+    1.5.1   factory reset mechanism
     1.5.0   MQTT configuration via WiFiManager
     1.4.0   switch to WiFiManager
     1.3.6   fixes
@@ -29,7 +30,6 @@
 #include <LEDMatrixDriver.hpp>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
-/**#include <WiFiManager.h>**/
 #include <PubSubClient.h>
 #include "local_config.h"
 
@@ -83,7 +83,7 @@ PubSubClient client(espClient);
 // forward declarations
 
 void getScrolltextFromBuffer(int channel);
-
+void showStatus(char* text);
 
 // functions
 
@@ -94,15 +94,6 @@ void setup() {
     led.setPixel(63, y, 1);
   led.display();
 
-  Serial.begin(115200);
-  Serial.println();
-  Serial.println();
-  Serial.println("MarQueTT[ino] Version " VERSION);
-  Serial.println();
-  setup_wifi();
-  client.setServer(sett.mqtt_broker, 1883);
-  client.setCallback(callback);
-  client.setBufferSize(MAX_TEXT_LENGTH);
   for (int c = 0; c < NUM_CHANNELS; c++) {
     //snprintf((char*)(texts[c]), MAX_TEXT_LENGTH, "[%d] %s", c, initialText);
     snprintf((char*)(texts[c]), sizeof(texts[c]), "MarQueTTino %s Version %s", devaddr, VERSION);
@@ -110,6 +101,17 @@ void setup() {
   textcycle[0] = 0;
 
   calculate_font_index();
+
+  Serial.begin(115200);
+  delay(500);
+  Serial.println();
+  Serial.println();
+  Serial.println("MarQueTT[ino] Version " VERSION);
+  Serial.println();
+  setup_wifi(showStatus);
+  client.setServer(sett.mqtt_broker, 1883);
+  client.setCallback(mqttReceiveCallback);
+  client.setBufferSize(MAX_TEXT_LENGTH);
 }
 
 
@@ -129,6 +131,7 @@ void loop()
   loop_matrix();
   if (!client.connected()) {
     reconnect();
+    showStatus("ready");
     if (do_publishes)
       if (first_connect) {
         client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "startup");
@@ -152,7 +155,7 @@ void printHex8(uint8_t *data, uint8_t length) // prints 8-bit data in hex with l
 }
 
 
-void callback(char* topic, byte* payload, unsigned int length)
+void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
 {
   const bool pr = DEBUGPRINT;                   // set to 1 for debug prints
 
@@ -177,8 +180,14 @@ void callback(char* topic, byte* payload, unsigned int length)
       if (pr) LogTarget.print((String)"    no match, ignore command");
       return;
     }
+  } else if (command.startsWith("all")) {   // all devices
+      if (pr) LogTarget.println((String)"    ok, matches 'all'");
+      command.remove(0, strlen("all") + 1);   // strip device name
+  } else {
+    if (pr) LogTarget.print((String)"    incorrect/obsolete addressing scheme, ignore command");
+    return;
   }
-
+  
   LogTarget.println((String)"Command = [" + command + "]");
 
   if (command.equals("intensity")) {
@@ -495,11 +504,14 @@ void reconnect() {
     clientId += String(random(0xffff), HEX);
     if (client.connect(clientId.c_str(), sett.mqtt_user, sett.mqtt_password, (((String)TOPICROOT "/" + devname + "/status").c_str()), 1, true, "offline")) {
       LogTarget.println("connected");
+      client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "online", true);
       client.subscribe(TOPICROOT "/#");
+      showStatus("MQTT ok");
     } else {
       LogTarget.print("failed, rc=");
       LogTarget.print(client.state());
       LogTarget.println(" try again in 5 seconds");
+      showStatus("MQTT error");
       delay(5000);
     }
   }
@@ -630,4 +642,38 @@ void loop_matrix()
       }
     }
   }
+}
+
+
+void showStatus(char* text)
+{
+  Serial.println((String)"showStatus: " + text);
+  textIndex = 0;
+  current_channel = 0;
+  sprintf((char*)texts[current_channel], "%s", text);
+  getScrolltextFromBuffer(current_channel);
+  colIndex = 0;
+  marqueeDelayTimestamp = 0;
+  scrollWhitespace = 0;
+  led.clear();
+  uint8_t displayColumn = 0; // start left
+  while (displayColumn < LEDMATRIX_WIDTH) {
+    // write one column
+    uint8_t asc = scrollbuffer[textIndex] - 32;
+    uint16_t idx = pgm_read_word(&(font_index[asc]));
+    uint8_t w = pgm_read_byte(&(font[idx]));
+    uint8_t col = pgm_read_byte(&(font[colIndex + idx + 1]));
+    led.setColumn(displayColumn, col);
+    led.display();
+    displayColumn++;
+    if (++colIndex == w) {
+      displayColumn += 1;
+      colIndex = 0;
+      if (scrollbuffer[++textIndex] == '\0') {
+        break;  //return; // done
+        textIndex = 0;
+      }
+    }
+  }
+  delay(500);
 }

@@ -12,13 +12,14 @@
 // general
 #define APPNAME "MarQueTTino"
 #define APPVERSION VERSION
-//                  ^^^^^------ change APPVERSION in order to invalidate flash storage!
-#define IDENT   (APPNAME "_" APPVERSION)
+//      ^^^^^------ change APPVERSION (aka VERSION) in order to invalidate flash storage!
+#define IDENT         (APPNAME "_" APPVERSION)
+#define RESET_IDENT   "RESET"
 
-#define SETUP_PIN 0
+#define IDENT_LENGTH  30
+#define STR_LENGTH    80
 
-#define IDENT_LENGTH 32
-#define STR_LENGTH 80
+#define SETTINGS_POS  0
 
 struct Settings {
   char settings_identifier[IDENT_LENGTH];
@@ -28,6 +29,9 @@ struct Settings {
   //char mqtt_topic[STR_LENGTH];
 } sett;
 
+// callback function for status information
+std::function<void(char*)> statusCallback;
+
 //flag for saving data
 bool shouldSaveConfig = false;
 
@@ -36,37 +40,128 @@ char devname[40];
 IPAddress ip;
 String devname_lc;
 
+void dumpEEPROMBuffer()
+{
+  char buf[80];
+  for (int pos = 0; pos < sizeof(Settings); pos++) {
+    if (pos % 16 == 0)  {
+      sprintf(buf, "\n%04x: ", pos);
+      Serial.print(buf);
+    }
+    uint8_t val = EEPROM.read(pos);
+    sprintf(buf, "%c ", char(val));
+    Serial.print(val ? String(buf) : String("• "));
+  }
+  Serial.println();
+}
 
 
-//callback notifying us of the need to save config
+// callback notifying us that AP was opened
+void startAPCallback(WiFiManager* wm)
+{
+    if (statusCallback) statusCallback("AP active");
+}
+
+
+// callback notifying us of the need to save config
 void saveConfigCallback () {
   Serial.println("Should save config");
   shouldSaveConfig = true;
 }
 
-void setup_wifi() {
-  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-  pinMode(SETUP_PIN, INPUT_PULLUP);
+void initiateFactoryReset()
+{
+  strncpy(sett.settings_identifier, "RESET", IDENT_LENGTH);
 
-  //Delay to push SETUP button
-  Serial.println("Press setup button");
-  for (int sec = 3; sec > 0; sec--) {
-    Serial.print(sec);
-    Serial.print("..");
-    delay(1000);
+  EEPROM.put(SETTINGS_POS, sett);
+  if (EEPROM.commit()) {
+    Serial.println("identifier temporarily cleared for factory reset");
+    ESP.restart();
+  } else {
+    Serial.println("EEPROM error");
+  }
+}
+
+void setup_wifi(std::function<void(char*)> func = 0) {
+
+  statusCallback = func;
+
+  if (statusCallback) {
+    Serial.println("TEST: Show status 999");
+    statusCallback("init");
+  } else {
+    Serial.println("no status info callback set");
   }
 
-  // warning for example only, this will initialize empty memory into your vars
-  // always init flash memory or add some checksum bits
-  EEPROM.begin( 512 );
-  EEPROM.get(0, sett);
+  bool needsSetup = false;
+
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+
+  EEPROM.begin(512);
+  dumpEEPROMBuffer();
+
+  EEPROM.get(SETTINGS_POS, sett);
   Serial.println("Settings loaded");
+
+  Serial.println((String)"stored ident = " + sett.settings_identifier);
+  if (strncmp(sett.settings_identifier, IDENT, IDENT_LENGTH) != 0) {
+
+    if (statusCallback) statusCallback("f-reset");
+
+    Serial.println("incorrect identifier, initiating factory reset!");
+    // maybe first start at all, or maybe
+    // reset was issued while identifier was cleared
+    needsSetup = true;
+
+    Serial.println((String)"Identifier not ok: " + sett.settings_identifier + " != " + IDENT);
+    strcpy(sett.mqtt_broker, "");
+    strcpy(sett.mqtt_user, "");
+    strcpy(sett.mqtt_password, "");
+    //strcpy(sett.mqtt_topic, "");
+    Serial.println("Settings initialized");
+
+  } else {
+
+    // identifier ok, option to reset to factory defaults
+    Serial.println("Press reset for factory defaults or wait 3 seconds to continue");
+
+    char  savedIdent[IDENT_LENGTH];
+    strncpy(savedIdent, sett.settings_identifier, IDENT_LENGTH);
+
+    strncpy(sett.settings_identifier, "RESET", IDENT_LENGTH);
+
+    EEPROM.put(SETTINGS_POS, sett);
+    if (EEPROM.commit()) {
+      Serial.println("identifier temporarily cleared for factory reset");
+    } else {
+      Serial.println("EEPROM error");
+    }
+    char buf[10];
+    for (int sec = 3; sec > 0; sec--) {
+      Serial.print((String)"[" + sec + "] ");
+      sprintf(buf, "res? %d", sec);
+      if (statusCallback) statusCallback(buf);
+      delay(1000);
+    }
+    Serial.println(" --  done.");
+    if (statusCallback) statusCallback("continue");
+    strncpy(sett.settings_identifier, savedIdent, IDENT_LENGTH);
+    EEPROM.put(SETTINGS_POS, sett);
+    if (EEPROM.commit()) {
+      Serial.println("identifier restored to former value");
+    } else {
+      Serial.println("EEPROM error");
+    }
+  }
+
+  // prepare WiFi + WiFiManager
 
   // Use [APPNAME]-[MAC] as Name for (a) WifiManager AP, (b) OTA hostname, (c) MQTT client name
   uint8_t mac[6];
   WiFi.macAddress(mac);
   snprintf(devaddr, sizeof(devaddr), "%02X%02X%02X", mac[3], mac[4], mac[5]);
   snprintf(devname, sizeof(devname), APPNAME "-%02X%02X%02X", mac[3], mac[4], mac[5]);
+  if (statusCallback) statusCallback(devaddr);
 
   WiFiManagerParameter param_mqtt_broker( "host", "MQTT broker hostname",  sett.mqtt_broker, STR_LENGTH);
   WiFiManagerParameter param_mqtt_user( "user", "MQTT user name",  sett.mqtt_user, STR_LENGTH);
@@ -74,18 +169,23 @@ void setup_wifi() {
   //WiFiManagerParameter param_mqtt_topic( "topc", "MQTT topic",  sett.mqtt_topic, STR_LENGTH);
 
   WiFiManager wm;
+  wm.setAPCallback(startAPCallback);
   wm.setSaveConfigCallback(saveConfigCallback);
   wm.addParameter( &param_mqtt_broker );
   wm.addParameter( &param_mqtt_user );
   wm.addParameter( &param_mqtt_password );
   //wm.addParameter( &param_mqtt_topic );
 
-  if (digitalRead(SETUP_PIN) == LOW) {    // Button pressed
-    Serial.println("SETUP");
-    wm.startConfigPortal();
+  if (needsSetup) {
+    Serial.println("FIRST SETUP");
+    if (statusCallback) statusCallback("use AP");
+    wm.startConfigPortal(devname);
+    if (statusCallback) statusCallback("WiFi ok");
   } else {
-    Serial.println("WORK");
-    wm.autoConnect(devname);
+    Serial.println("REGULAR SETUP");
+    if (statusCallback) statusCallback("WiFiManager");
+    wm.autoConnect(devname);          // just try. will automatically fall back to AP mode if necessary
+    if (statusCallback) statusCallback("WiFi ok");
   }
 
 
@@ -98,6 +198,7 @@ void setup_wifi() {
   devname_lc = String(devname);
   devname_lc.toLowerCase(); // used for topic comparisons
 
+  strncpy(sett.settings_identifier, IDENT, IDENT_LENGTH);   // mark settings as valid
   strncpy(sett.mqtt_broker, param_mqtt_broker.getValue(), STR_LENGTH);
   sett.mqtt_broker[STR_LENGTH - 1] = '\0';
   strncpy(sett.mqtt_user, param_mqtt_user.getValue(), STR_LENGTH);
@@ -114,22 +215,24 @@ void setup_wifi() {
 
   if (shouldSaveConfig) {
     LogTarget.println("Settings changed, need to save them to flash");
-    EEPROM.put(0, sett);
+
+    EEPROM.put(SETTINGS_POS, sett);
     if (EEPROM.commit()) {
       LogTarget.println("Settings saved");
+      dumpEEPROMBuffer();
     } else {
       LogTarget.println("EEPROM error");
     }
   }
-  LogTarget.println("Done with WiFi Setup! Results:");
 
+  LogTarget.println("Done with WiFi Setup! Results:");
   LogTarget.println((String)"MQTT broker hostname: " + sett.mqtt_broker);
   LogTarget.println((String)"MQTT user name:       " + sett.mqtt_user);
   LogTarget.println((String)"MQTT password:        " + sett.mqtt_password);
   //Serial.println((String)"MQTT topic:           " + sett.mqtt_topic);
 
 
-  //// OTA FUNCTIONS
+  //// OTA SETUP + FUNCTIONS
   //
   //
   ArduinoOTA.setHostname(devname);
