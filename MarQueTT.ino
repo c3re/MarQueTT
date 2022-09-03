@@ -5,7 +5,7 @@
 
 */
 
-#define VERSION "1.5.1"
+#define VERSION "1.5.2"
 
 /*  Version history:
     1.5.1   factory reset mechanism

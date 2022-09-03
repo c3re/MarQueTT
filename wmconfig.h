@@ -59,7 +59,9 @@ void dumpEEPROMBuffer()
 // callback notifying us that AP was opened
 void startAPCallback(WiFiManager* wm)
 {
-    if (statusCallback) statusCallback("AP active");
+  char buf[20];
+  snprintf(buf, sizeof(buf), "AP: %s", devaddr);
+  if (statusCallback) statusCallback(buf);
 }
 
 
@@ -137,9 +139,10 @@ void setup_wifi(std::function<void(char*)> func = 0) {
       Serial.println("EEPROM error");
     }
     char buf[10];
-    for (int sec = 3; sec > 0; sec--) {
+    for (int sec = 1; sec > 0; sec--) {
       Serial.print((String)"[" + sec + "] ");
-      sprintf(buf, "res? %d", sec);
+      //sprintf(buf, "res? %d", sec);
+      sprintf(buf, "reset?");
       if (statusCallback) statusCallback(buf);
       delay(1000);
     }

@@ -77,11 +77,13 @@ There may be problems when the power supply to the matrix is not good. Usually, 
 
 When the device is started for the first time, it creates an WiFi access point with the SSID name of "MarQueTTino-<aabbcc>", <aabbcc> being the serial number as described above. When you connect to that network with your computer, it will display a setup dialogue provided by the WiFiManager library. Here you can choose the WiFi it should connect to, give the password and finally set the MQTT parameters: broker hostname, and optionally MQTT user and password. These parameters are then stored in the ESP's flash memory. If the device cannot join the configured WiFi network on startup anytime later, it will again present the AP.
 
-When the device is started, it gives several status messages on the display. When a countdown "res? 3" .. 1 is shown, the reset button can be pressed in order to force a factory default reset. After this, the device will again go into AP mode and the setup can / must be done.
+When the device is started, it gives several status messages on the display. While a message "reset?" is shown, the reset button can be pressed in order to force a factory default reset. After this, the device will again go into AP mode and the setup can / must be done. Without reset, the AP is always shown when the network + MQTT access is not possible.
+
+The AP menu can also be used in order to install a *.bin (firmware binary) file for an update.
 
 ### Change Ideas
 
-- currently none.
+- perhaps implement a priority function so that device-specific topics precede the general topics.
 
 ### Extension Ideas
 
