@@ -20,7 +20,7 @@ jobs:
             - name: WiFiManager
               version: 2.0.12-beta
           platforms: |
-            - name: "esp8266:esp8266"
+            - name: "esp8266"
               version: 3.0.2
               source_url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
 
