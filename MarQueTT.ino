@@ -5,9 +5,11 @@
 
 */
 
-#define VERSION "1.5.2"
+#define VERSION "1.5.3"
 
 /*  Version history:
+    1.5.3   bugfix: control codes in text
+    1.5.2   better AP prompt: include device number
     1.5.1   factory reset mechanism
     1.5.0   MQTT configuration via WiFiManager
     1.4.0   switch to WiFiManager
@@ -181,13 +183,13 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
       return;
     }
   } else if (command.startsWith("all")) {   // all devices
-      if (pr) LogTarget.println((String)"    ok, matches 'all'");
-      command.remove(0, strlen("all") + 1);   // strip device name
+    if (pr) LogTarget.println((String)"    ok, matches 'all'");
+    command.remove(0, strlen("all") + 1);   // strip device name
   } else {
-    if (pr) LogTarget.print((String)"    incorrect/obsolete addressing scheme, ignore command");
+    if (pr) LogTarget.println((String)"    incorrect/obsolete addressing scheme, ignore command");
     return;
   }
-  
+
   LogTarget.println((String)"Command = [" + command + "]");
 
   if (command.equals("intensity")) {
@@ -337,6 +339,12 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
       }
       if ((b & 0b10000000) == 0) {                    // 7-bit ASCII
         if (pr) LogTarget.println("ASCII");
+        if (b == 0 || b == 10) {
+          b = 32;
+        } else if (b < 32) {
+          LogTarget.println((String)"** Replace unknown control code <" + b + "> with checkerboard");
+          b = 127;
+        }
         text[j++] = b;
 
         /* extending the character set:
