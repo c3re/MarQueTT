@@ -1,0 +1,55 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  compile-sketch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout code
+      - uses: canastro/copy-file-action@0.0.2
+        name: copy local_config.h
+        with:
+          source: "local_config.dist.h"
+          target: "local_config.h"
+      - uses: arduino/compile-sketches@v1.0.1
+        name: Compile Sketch
+        with:
+          cli-compile-flags: |
+            - --output-dir
+            - "$RUNNER_TEMP"
+            - -v
+          fqbn: "esp8266:esp8266:nodemcu https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+          sketch-paths: |
+            - ./
+          libraries: |
+            # no libraries required
+            - name: LEDMatrixDriver
+              version: 0.2.2
+            - name: PubSubClient
+              version: 2.8.0
+            - name: WiFiManager
+              version: 2.0.12-beta
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+         with:
+           draft: false
+           prerelease: false
+           release_name: "$GITHUB_REF_NAME"
+           tag_name: ${{ github.ref }}
+           body_path: CHANGELOG.md
+         env:
+           GITHUB_TOKEN: ${{ github.token }}
+      - name: upload darwin artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "$RUNNER_TEMP/MarQueTT.ino.bin"
+          asset_name: "marquettino-$GITHUB_REF_NAME.bin"
+          asset_content_type: application/gzip
+
