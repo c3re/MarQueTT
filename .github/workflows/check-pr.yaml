@@ -29,5 +29,3 @@ jobs:
               version: 2.8.0
             - name: WiFiManager
               version: 2.0.12-beta
-      - uses: arduino/report-size-deltas@v1.0.0
-        name: Generate size report
