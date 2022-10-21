@@ -68,15 +68,18 @@ uint8_t textcycle[MAX_TEXTCYCLE];
 uint8_t num_textcycles = 1;
 uint8_t current_cycle = 0;
 uint8_t start_countdown = START_CYCLES;
+uint8_t colIndex = 0;
 uint16_t current_channel = 0;
 uint16_t textIndex = 0;
-uint8_t colIndex = 0;
 uint16_t scrollWhitespace = 0;
+uint16_t ledmatrix_width = INITIAL_LEDMATRIX_SEGMENTS * 8;
+uint16_t blinkDelay = 0;
 uint64_t marqueeCycleTimestamp = 0;
 uint64_t marqueeDelayTimestamp = 0;
 uint64_t marqueeBlinkTimestamp;
-uint16_t blinkDelay = 0;
 bool first_connect = true;
+
+
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -112,6 +115,7 @@ void setup() {
   Serial.println("MarQueTT[ino] Version " VERSION);
   Serial.println();
   setup_wifi(showStatus);
+  ledmatrix_width = String(sett.num_segments).toInt() * 8;
   free(led);
   led = new LEDMatrixDriver(String(sett.num_segments).toInt(), LEDMATRIX_CS_PIN, 0);
   led->setIntensity(0);
@@ -533,15 +537,12 @@ void reconnect() {
   }
 }
 
-
-const uint16_t LEDMATRIX_WIDTH    = INITIAL_LEDMATRIX_SEGMENTS * 8;
-
 void nextChar()
 {
   if (scrollbuffer[++textIndex] == '\0')
   {
     textIndex = 0;
-    scrollWhitespace = LEDMATRIX_WIDTH; // start over with empty display
+    scrollWhitespace = ledmatrix_width; // start over with empty display
     if (scrollDelay && do_publishes)
       client.publish((((String)TOPICROOT "/" + devname + "/status").c_str()), "repeat");
 
@@ -576,7 +577,7 @@ void writeCol()
   uint16_t idx = pgm_read_word(&(font_index[asc]));
   uint8_t w = pgm_read_byte(&(font[idx]));
   uint8_t col = pgm_read_byte(&(font[colIndex + idx + 1]));
-  led->setColumn(LEDMATRIX_WIDTH - 1, col);
+  led->setColumn(ledmatrix_width - 1, col);
   nextCol(w);
 }
 
@@ -638,7 +639,7 @@ void loop_matrix()
       scrollWhitespace = 0;
       led->clear();
       uint8_t displayColumn = 0; // start left
-      while (displayColumn < LEDMATRIX_WIDTH) {
+      while (displayColumn < ledmatrix_width) {
         // write one column
         uint8_t asc = scrollbuffer[textIndex] - 32;
         uint16_t idx = pgm_read_word(&(font_index[asc]));
@@ -673,7 +674,7 @@ void showStatus(char* text)
   scrollWhitespace = 0;
   led->clear();
   uint8_t displayColumn = 0; // start left
-  while (displayColumn < LEDMATRIX_WIDTH) {
+  while (displayColumn < ledmatrix_width) {
     // write one column
     uint8_t asc = scrollbuffer[textIndex] - 32;
     uint16_t idx = pgm_read_word(&(font_index[asc]));
