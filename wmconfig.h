@@ -26,6 +26,7 @@ struct Settings {
   char mqtt_broker[STR_LENGTH];
   char mqtt_user[STR_LENGTH];
   char mqtt_password[STR_LENGTH];
+  char num_segments[STR_LENGTH];
   //char mqtt_topic[STR_LENGTH];
 } sett;
 
@@ -119,6 +120,7 @@ void setup_wifi(std::function<void(char*)> func = 0) {
     strcpy(sett.mqtt_broker, "");
     strcpy(sett.mqtt_user, "");
     strcpy(sett.mqtt_password, "");
+    strcpy(sett.num_segments, "");
     //strcpy(sett.mqtt_topic, "");
     Serial.println("Settings initialized");
 
@@ -169,6 +171,7 @@ void setup_wifi(std::function<void(char*)> func = 0) {
   WiFiManagerParameter param_mqtt_broker( "host", "MQTT broker hostname",  sett.mqtt_broker, STR_LENGTH);
   WiFiManagerParameter param_mqtt_user( "user", "MQTT user name",  sett.mqtt_user, STR_LENGTH);
   WiFiManagerParameter param_mqtt_password( "pswd", "MQTT password",  sett.mqtt_password, STR_LENGTH);
+  WiFiManagerParameter param_num_segments( "nums", "Number of LED-Segments (4,8,12)",  sett.num_segments, STR_LENGTH);
   //WiFiManagerParameter param_mqtt_topic( "topc", "MQTT topic",  sett.mqtt_topic, STR_LENGTH);
 
   WiFiManager wm;
@@ -177,6 +180,7 @@ void setup_wifi(std::function<void(char*)> func = 0) {
   wm.addParameter( &param_mqtt_broker );
   wm.addParameter( &param_mqtt_user );
   wm.addParameter( &param_mqtt_password );
+  wm.addParameter( &param_num_segments );
   //wm.addParameter( &param_mqtt_topic );
 
   if (needsSetup) {
@@ -208,12 +212,15 @@ void setup_wifi(std::function<void(char*)> func = 0) {
   sett.mqtt_user[STR_LENGTH - 1] = '\0';
   strncpy(sett.mqtt_password, param_mqtt_password.getValue(), STR_LENGTH);
   sett.mqtt_password[STR_LENGTH - 1] = '\0';
+  strncpy(sett.num_segments, param_num_segments.getValue(), STR_LENGTH);
+  sett.num_segments[STR_LENGTH - 1] = '\0';
   //strncpy(sett.mqtt_broker, param_mqtt_broker.getValue(), STR_LENGTH);
   //sett.mqtt_broker[STR_LENGTH - 1] = '\0';
 
   LogTarget.println((String)"MQTT broker hostname: " + sett.mqtt_broker);
   LogTarget.println((String)"MQTT user name:       " + sett.mqtt_user);
   LogTarget.println((String)"MQTT password:        " + sett.mqtt_password);
+  LogTarget.println((String)"Num of Segements:     " + sett.num_segments);
   //LogTarget.println((String)"MQTT topic:           " + sett.mqtt_topic);
 
   if (shouldSaveConfig) {

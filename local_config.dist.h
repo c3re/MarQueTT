@@ -11,7 +11,7 @@ const bool do_publishes = true;
 // you may set LOG_TELNET here to 1 if you want logging via telnet (Port 23):
 //#define LOG_TELNET  1
 
-const int LEDMATRIX_SEGMENTS = 8;                                           // Number of 8x8 LED Segments (usually 8, or 4 or 12)
+const int INITIAL_LEDMATRIX_SEGMENTS = 8;                                   // Number of 8x8 LED Segments (usually 8, or 4 or 12)
 const uint8_t LEDMATRIX_CS_PIN = D4;                                        // CableSelect pin
 
 #define MAX_TEXT_LENGTH 1500                      // Maximal text length
