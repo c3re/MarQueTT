@@ -19,7 +19,7 @@ jobs:
         with:
           cli-compile-flags: |
             - --output-dir
-            - ${{ env.RUNNER_TEMP }}
+            - "$RUNNER_TEMP"
             - -v
           fqbn: "esp8266:esp8266:nodemcu https://arduino.esp8266.com/stable/package_esp8266com_index.json"
           sketch-paths: |
@@ -39,7 +39,7 @@ jobs:
           draft: false
           prerelease: false
           release_name: ${{ env.GITHUB_REF_NAME }}
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Upload binary
@@ -48,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "${{ env.RUNNER_TEMP }}/MarQueTT.ino.bin"
-          asset_name: "marquettino-${{ env.GITHUB_REF_NAME }}.bin"
-          asset_content_type: application/gzip
+          asset_path: "$RUNNER_TEMP/MarQueTT.ino.bin"
+          asset_name: "marquettino-${{ github.ref_name }}.bin"
+          asset_content_type: binary/octet-stream
 
