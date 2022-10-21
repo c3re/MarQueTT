@@ -5,9 +5,10 @@
 
 */
 
-#define VERSION "1.5.3"
+#define VERSION "1.5.4"
 
 /*  Version history:
+    1.5.4   Set num of led-segments via webinterface
     1.5.3   bugfix: control codes in text
     1.5.2   better AP prompt: include device number
     1.5.1   factory reset mechanism
@@ -60,8 +61,7 @@
 
 // variables
 
-LEDMatrixDriver led(LEDMATRIX_SEGMENTS, LEDMATRIX_CS_PIN, 0);
-
+LEDMatrixDriver* led;
 uint8_t scrollbuffer[MAX_TEXT_LENGTH];
 uint8_t texts[NUM_CHANNELS][MAX_TEXT_LENGTH];
 uint8_t textcycle[MAX_TEXTCYCLE];
@@ -90,11 +90,12 @@ void showStatus(char* text);
 // functions
 
 void setup() {
-  led.setIntensity(0);
-  led.setEnabled(true);
+  led = new LEDMatrixDriver(INITIAL_LEDMATRIX_SEGMENTS, LEDMATRIX_CS_PIN, 0);
+  led->setIntensity(0);
+  led->setEnabled(true);
   for (int y = 0; y < 8; y++)
-    led.setPixel(63, y, 1);
-  led.display();
+    led->setPixel(63, y, 1);
+  led->display();
 
   for (int c = 0; c < NUM_CHANNELS; c++) {
     //snprintf((char*)(texts[c]), MAX_TEXT_LENGTH, "[%d] %s", c, initialText);
@@ -111,6 +112,13 @@ void setup() {
   Serial.println("MarQueTT[ino] Version " VERSION);
   Serial.println();
   setup_wifi(showStatus);
+  free(led);
+  led = new LEDMatrixDriver(String(sett.num_segments).toInt(), LEDMATRIX_CS_PIN, 0);
+  led->setIntensity(0);
+  led->setEnabled(true);
+  for (int y = 0; y < 8; y++)
+    led->setPixel(63, y, 1);
+  led->display();
   client.setServer(sett.mqtt_broker, 1883);
   client.setCallback(mqttReceiveCallback);
   client.setBufferSize(MAX_TEXT_LENGTH);
@@ -122,11 +130,11 @@ void loop()
   ArduinoOTA.handle();
   if (blinkDelay) {
     if (marqueeBlinkTimestamp + blinkDelay < millis()) {
-      led.setEnabled(false);
+      led->setEnabled(false);
       delay(1);
       marqueeBlinkTimestamp = millis();
     } else if (marqueeBlinkTimestamp + blinkDelay / 2 < millis()) {
-      led.setEnabled(true);
+      led->setEnabled(true);
       delay(1);
     }
   }
@@ -199,7 +207,7 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
       intensity += payload[i] - '0';
     }
     intensity = max(0, min(15, intensity));
-    led.setIntensity(intensity);
+    led->setIntensity(intensity);
     return;
   }
 
@@ -246,7 +254,7 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
       blinkDelay = 10000;
     }
     if (!blinkDelay) {
-      led.setEnabled(true);
+      led->setEnabled(true);
     } else {
       marqueeBlinkTimestamp = millis();
     }
@@ -256,7 +264,7 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
 
 
   if (command.equals("enable")) {
-    led.setEnabled(payload[0] == '1');
+    led->setEnabled(payload[0] == '1');
   }
 
 
@@ -526,7 +534,7 @@ void reconnect() {
 }
 
 
-const uint16_t LEDMATRIX_WIDTH    = LEDMATRIX_SEGMENTS * 8;
+const uint16_t LEDMATRIX_WIDTH    = INITIAL_LEDMATRIX_SEGMENTS * 8;
 
 void nextChar()
 {
@@ -568,7 +576,7 @@ void writeCol()
   uint16_t idx = pgm_read_word(&(font_index[asc]));
   uint8_t w = pgm_read_byte(&(font[idx]));
   uint8_t col = pgm_read_byte(&(font[colIndex + idx + 1]));
-  led.setColumn(LEDMATRIX_WIDTH - 1, col);
+  led->setColumn(LEDMATRIX_WIDTH - 1, col);
   nextCol(w);
 }
 
@@ -579,9 +587,9 @@ void marquee()
   if (millis() < marqueeDelayTimestamp)
     return;
   marqueeDelayTimestamp = millis() + scrollDelay;
-  led.scroll(LEDMatrixDriver::scrollDirection::scrollLeft);
+  led->scroll(LEDMatrixDriver::scrollDirection::scrollLeft);
   writeCol();
-  led.display();
+  led->display();
 }
 
 
@@ -628,7 +636,7 @@ void loop_matrix()
       colIndex = 0;
       marqueeDelayTimestamp = 0;
       scrollWhitespace = 0;
-      led.clear();
+      led->clear();
       uint8_t displayColumn = 0; // start left
       while (displayColumn < LEDMATRIX_WIDTH) {
         // write one column
@@ -636,8 +644,8 @@ void loop_matrix()
         uint16_t idx = pgm_read_word(&(font_index[asc]));
         uint8_t w = pgm_read_byte(&(font[idx]));
         uint8_t col = pgm_read_byte(&(font[colIndex + idx + 1]));
-        led.setColumn(displayColumn, col);
-        led.display();
+        led->setColumn(displayColumn, col);
+        led->display();
         displayColumn++;
         if (++colIndex == w) {
           displayColumn += 1;
@@ -663,7 +671,7 @@ void showStatus(char* text)
   colIndex = 0;
   marqueeDelayTimestamp = 0;
   scrollWhitespace = 0;
-  led.clear();
+  led->clear();
   uint8_t displayColumn = 0; // start left
   while (displayColumn < LEDMATRIX_WIDTH) {
     // write one column
@@ -671,8 +679,8 @@ void showStatus(char* text)
     uint16_t idx = pgm_read_word(&(font_index[asc]));
     uint8_t w = pgm_read_byte(&(font[idx]));
     uint8_t col = pgm_read_byte(&(font[colIndex + idx + 1]));
-    led.setColumn(displayColumn, col);
-    led.display();
+    led->setColumn(displayColumn, col);
+    led->display();
     displayColumn++;
     if (++colIndex == w) {
       displayColumn += 1;
