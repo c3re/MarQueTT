@@ -4,7 +4,7 @@ on:
       - '*'
 
 jobs:
-  create-release:
+  create_release:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -19,7 +19,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-  build-release-binaries:
+  build_release_binaries:
     needs: create_release
     runs-on: ubuntu-latest
     strategy:
