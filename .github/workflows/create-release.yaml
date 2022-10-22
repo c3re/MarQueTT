@@ -24,7 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        board: ["nodemcu", "d1_mini"]
+        #  board: ["nodemcu", "d1_mini"]
+        board: ["d1_mini"]
     steps:
       - uses: actions/checkout@v2
         name: Checkout code
