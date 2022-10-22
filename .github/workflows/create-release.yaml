@@ -5,6 +5,9 @@ on:
 
 jobs:
   create-release:
+    strategy:
+      matrix:
+        board: ["nodemcu", "d1_mini"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,9 +22,9 @@ jobs:
         with:
           cli-compile-flags: |
             - --output-dir
-            - "$RUNNER_TEMP"
+            - "${{ matrix.board }}"
             - -v
-          fqbn: "esp8266:esp8266:nodemcu https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+          fqbn: "esp8266:esp8266:${{ matrix.board }} https://arduino.esp8266.com/stable/package_esp8266com_index.json"
           sketch-paths: |
             - ./
           libraries: |
@@ -48,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "$RUNNER_TEMP/MarQueTT.ino.bin"
-          asset_name: "marquettino-${{ github.ref_name }}.bin"
+          asset_path: "${{ matrix.board }}/MarQueTT.ino.bin"
+          asset_name: "marquettino-${{ matrix.board }}-${{ github.ref_name }}.bin"
           asset_content_type: binary/octet-stream
 
