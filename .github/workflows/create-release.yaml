@@ -5,6 +5,21 @@ on:
 
 jobs:
   create-release:
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  build-release-binaries:
+    needs: create_release
     strategy:
       matrix:
         board: ["nodemcu", "d1_mini"]
@@ -35,22 +50,12 @@ jobs:
               version: 2.8.0
             - name: WiFiManager
               version: 2.0.12-beta
-      - name: Create release
-        uses: actions/create-release@v1
-        id: create_release
-        with:
-          draft: false
-          prerelease: false
-          release_name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
       - name: Upload binary
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: "${{ matrix.board }}/MarQueTT.ino.bin"
           asset_name: "marquettino-${{ matrix.board }}-${{ github.ref_name }}.bin"
           asset_content_type: binary/octet-stream
