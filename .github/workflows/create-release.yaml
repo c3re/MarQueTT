@@ -5,6 +5,7 @@ on:
 
 jobs:
   create-release:
+    runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
@@ -20,10 +21,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
   build-release-binaries:
     needs: create_release
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         board: ["nodemcu", "d1_mini"]
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         name: Checkout code
