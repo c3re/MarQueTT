@@ -8,19 +8,19 @@
 
 ##### Subscribed by Device
 
-- `ledMatrix/text`  : A UTF-8 coded text, max. 4096 bytes long.
-- `ledMatrix/intensity`: 0 = lowest, 15 = highest. Default: 1.
-- `ledMatrix/delay`: 1 = fastest, 1000 = slowest scrolling. Default: 25 
+- `ledMatrix/all/text`  : A UTF-8 coded text, max. 4096 bytes long.
+- `ledMatrix/all/intensity`: 0 = lowest, 15 = highest. Default: 1.
+- `ledMatrix/all/delay`: 1 = fastest, 1000 = slowest scrolling. Default: 25 
 -  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 0 = no scrolling; < 0: negative value sets page cycle time in ms. Default: 5000 ms
-- `ledMatrix/blink`: 0 = no blinking; 1 = fastest, 1000 = slowest blinking. Default: 0
-- `ledMatrix/enable`: 0 = display off, 1 = display on. Default: 1
+- `ledMatrix/all/blink`: 0 = no blinking; 1 = fastest, 1000 = slowest blinking. Default: 0
+- `ledMatrix/all/enable`: 0 = display off, 1 = display on. Default: 1
 
 Default values are configurable in `local_config.h`. You can also use retained messages, preferably with individual topics (see below).
 
 **Extension:** text channels, `<cno>` = `0`..`9`
 
-- `ledMatrix/text/<cno>`    — text for a specific channel (`.../text/0` = same as `.../text`)
-- `ledMatrix/channel`       — set channels to be displayed
+- `ledMatrix/all/text/<cno>`    — text for a specific channel (`.../text/0` = same as `.../text`)
+- `ledMatrix/all/channel`       — set channels to be displayed
   - `<cno1>[,<cno2>...]`    — list of channels
   - `<cno1>`                — only one channel
   - "" (empty)              — only channel 0
@@ -30,13 +30,13 @@ Default values are configurable in `local_config.h`. You can also use retained m
 
 ##### Subscribed by Device
 
-Same as global topics, but `ledMatrix/<aabbcc>/...` instead of `ledMatrix/...` (<aabbcc> == serial number in 3 hex bytes).
+Same as global topics, but `ledMatrix/MarQueTTino-<aabbcc>/...` instead of `ledMatrix/all/...` (<aabbcc> == serial number in 3 hex bytes).
 
 TBD: priority of individual topics over global topics ?
 
 ##### Published by Device
 
-- `ledMatrix/<aabbcc>/status`:
+- `ledMatrix/MarQueTTino-<aabbcc>/status`:
   - `startup`       — sent on system start (after first MQTT connect)
   - `version x.y.z` — sent on system start (after first MQTT connect): firmware version number
   - `ip w.x.y.z`    — sent on system start (after first MQTT connect): IP address
