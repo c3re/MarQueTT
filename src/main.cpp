@@ -1,13 +1,16 @@
 /*
     MarQueTT[ino]     Matrix Display based on n x 8x8 monochrome LEDs, driven by MAX7221
 
-    a 2020/2021/2022 c3RE project
+    a 2020/2021/2022/2024 c3RE project
 
 */
 
-#define VERSION "1.5.4"
+#define VERSION "1.5.7"
 
 /*  Version history:
+    1.5.7   Refactoring, platformio
+    1.5.6   Restart via MQTT möglich
+    1.5.5   Startverhalten gefixt - ESP Reset wird 2x durchgeführt weil einige Module nicht korrekt initialisiert wurden. In Library (LEDMatrixDriver.cpp - SPI Settings) Clock Takt auf 4Mhz gesenkt
     1.5.4   Set num of led-segments via webinterface
     1.5.3   bugfix: control codes in text
     1.5.2   better AP prompt: include device number
@@ -85,10 +88,14 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 
-// forward declarations
+// function prototypes
 
 void getScrolltextFromBuffer(int channel);
 void showStatus(char* text);
+void loop_matrix();
+void reconnect();
+void mqttReceiveCallback(char* topic, byte* payload, unsigned int length);
+
 
 // functions
 
@@ -114,6 +121,9 @@ void setup() {
   Serial.println();
   Serial.println("MarQueTT[ino] Version " VERSION);
   Serial.println();
+      EEPROM.begin(512);
+      checkzweiterstart();
+      dumpEEPROMBuffer();
   setup_wifi(showStatus);
   ledmatrix_width = String(sett.num_segments).toInt() * 8;
   free(led);
@@ -264,6 +274,11 @@ void mqttReceiveCallback(char* topic, byte* payload, unsigned int length)
     }
 
     return;
+  }
+  if (command.equals("reset")) {
+  
+      ESP.restart();
+
   }
 
 
