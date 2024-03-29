@@ -1,24 +1,51 @@
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
 
 jobs:
-  create_release:
+  build:
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Create release
-        uses: actions/create-release@v1
-        id: create_release
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         with:
-          draft: false
-          prerelease: false
-          release_name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+
+      - name: Build PlatformIO Project
+        run: pio run
+        
+      # - name: Archive production artifacts
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: firmware
+      #     path: .pio/build/**/mobiflight*.hex
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: .pio/build/d1_mini/firmware.bin
+          name: "marquettino-d1_mini-${{ github.ref_name }}.bin"
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: .pio/build/nodemcuv2/firmware.bin
+          name: "marquettino-nodemcuv2-${{ github.ref_name }}.bin"
+
+
+
+
   build_release_binaries:
     needs: create_release
     runs-on: ubuntu-latest
@@ -29,11 +56,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout code
-      - uses: canastro/copy-file-action@0.0.2
-        name: copy local_config.h
-        with:
-          source: "local_config.dist.h"
-          target: "local_config.h"
       - uses: arduino/compile-sketches@v1.0.1
         name: Compile Sketch
         with:
@@ -44,14 +66,7 @@ jobs:
           fqbn: "esp8266:esp8266:${{ matrix.board }} https://arduino.esp8266.com/stable/package_esp8266com_index.json"
           sketch-paths: |
             - ./
-          libraries: |
-            # no libraries required
-            - name: LEDMatrixDriver
-              version: 0.2.2
-            - name: PubSubClient
-              version: 2.8.0
-            - name: WiFiManager
-              version: 2.0.12-beta
+
       - name: Upload binary
         uses: actions/upload-release-asset@v1
         env:
