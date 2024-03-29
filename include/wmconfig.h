@@ -20,6 +20,7 @@
 #define STR_LENGTH    80
 
 #define SETTINGS_POS  0
+uint16_t zweiterstart = 0;
 
 struct Settings {
   char settings_identifier[IDENT_LENGTH];
@@ -282,5 +283,57 @@ void setup_wifi(std::function<void(char*)> func = 0) {
   //
   //
   //// END OF OTA FUNCTIONS
+
+}
+void checkzweiterstart() {
+  EEPROM.get(100, zweiterstart);
+  Serial.println("EEprominhalt für Neustart:");
+  Serial.println(zweiterstart);
+        if (zweiterstart > 3) 
+        {
+        zweiterstart =0 ; // fals misst im eeprom steht
+        Serial.println("EEPROM Format");
+        }
+    
+    if (zweiterstart==0) {
+    zweiterstart = 1;
+    EEPROM.put(100, zweiterstart);
+    if (EEPROM.commit()) {
+      Serial.println("Ersten Start gespeichert");
+    } else {
+      Serial.println("EEPROM error");
+    }
+    Serial.println("erster neustart aktiv");
+    Serial.println(zweiterstart);
+    delay(2000);
+    ESP.restart();
+    }
+
+      if (zweiterstart==1) {
+    zweiterstart = 2;
+    EEPROM.put(100, zweiterstart);
+    if (EEPROM.commit()) {
+      Serial.println("Zweiter Start gespeichert");
+    } else {
+      Serial.println("EEPROM error");
+    }
+    Serial.println("zweiter neustart aktiv");
+    Serial.println(zweiterstart);
+    delay(2000);
+    ESP.restart();
+    }
+
+ if (zweiterstart==2) {
+    zweiterstart = 0;
+    EEPROM.put(100, zweiterstart);
+    if (EEPROM.commit()) {
+      Serial.println("Dritter Start gespeichert");
+    } else {
+      Serial.println("EEPROM error");
+    }
+    Serial.println("Startet");
+    Serial.println(zweiterstart);
+
+ }
 
 }
