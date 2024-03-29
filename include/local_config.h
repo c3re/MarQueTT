@@ -1,7 +1,6 @@
 
 // local configuration
 
-
 // set to false if you do not want to publish anything:
 const bool do_publishes = true;
 
@@ -25,3 +24,16 @@ const char* initialText = "no such text";         // Initial Text shown before t
 #define MAX_TEXTCYCLE 32                          // Maximum number of texts in one cycle
 #define START_CYCLES  3                           // Number of cycles for the start message
 #define DEBUGPRINT 0                              // set to 1 for debug prints
+#define LOG_TELNET  0                             // log over telnet
+
+#ifndef TOPICROOT
+#define TOPICROOT "ledMatrix"
+#endif
+
+
+#if LOG_TELNET
+#include <TelnetStream.h>
+#define LogTarget TelnetStream
+#else
+#define LogTarget Serial
+#endif
